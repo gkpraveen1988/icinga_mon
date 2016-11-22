@@ -1,14 +1,14 @@
 #!/usr/bin/python
 import os,sys, argparse, datetime, sqlite3                   # Importing the required modules
 from influxdb import InfluxDBClient     # Importing the influxdb client module
-DB_NAME = 'ServerStats'                   # Database name
-DB_SERVER = 'serverstats'                 # Server Name
-SQLITE_DB = '/asg_backup/backup.db'       # SQLITE3 DB
-DB_MEASUREMENT = 'asg_backup'		# MEASUREMENT
-#DB_NAME = 'asgbackup'                   # Database name
-#DB_SERVER = '10.0.0.22'                 # Server Name
-#SQLITE_DB = 'arista.db'                 # SQLITE3 DB
-#DB_MEASUREMENT = 'drive_info'		# MEASUREMENT
+#DB_NAME = 'ServerStats'                   # Database name
+#DB_SERVER = 'serverstats'                 # Server Name
+#SQLITE_DB = '/asg_backup/backup.db'       # SQLITE3 DB
+#DB_MEASUREMENT = 'asg_backup'		   # MEASUREMENT
+DB_NAME = 'asgbackup'                   # Database name
+DB_SERVER = 'localhost'                 # Server Name
+SQLITE_DB = 'arista.db'                 # SQLITE3 DB
+DB_MEASUREMENT = 'drive_info'		# MEASUREMENT
 client = InfluxDBClient( DB_SERVER, 8086, '', '', DB_NAME ) # Influx DB connection
 MYDICT =  {}
 now = datetime.datetime.now()
@@ -45,8 +45,7 @@ def addBackupPoint(server, files, size, startTime, endTime):
   MYDICT['nmbytes'] = size
   MYDICT['startTime'] = (datetime.datetime.strptime(startTime, '%Y-%m-%dT%H:%M:%SZ')).strftime("%Y-%m-%dT%H:00:00Z")
   pointsList.append(createPoint(MYDICT))
-  print pointsList
-#  client.write_points( pointsList )
+  client.write_points( pointsList )
 
 # Function for passing the correct option and get the option values
 def getArgs():
@@ -72,6 +71,7 @@ def sqlWriteInfluxDb():
    print "Error: Database %s not exists" % SQLITE_DB
    sys.exit( 1 )
   cursor = conn.execute("select * from drive_info where NOT uploaded;") # Fetch Sqlite data to cursor
+  print cursor
   for row in cursor:
      MYDICT['server'] = row[1]
      MYDICT['files'] = row[2]
@@ -83,21 +83,34 @@ def sqlWriteInfluxDb():
      # UPDATING THE SQLITE RECORDS WITH UPLOADED COLUMN AS 1
      conn.execute("update drive_info set uploaded=1 where uploaded=0;")
      conn.commit()
+     conn.close()
 
-# Checking whether the lenght of argv
-if len(sys.argv) > 1:
-    cmdLineArgs = getArgs()
-    MYDICT['server'] = cmdLineArgs.server
-    MYDICT['files'] = float(cmdLineArgs.files)
-    MYDICT['nmbytes'] = float(cmdLineArgs.nmbytes)
-    MYDICT['duration'] = float(cmdLineArgs.duration)
-    MYDICT['startTime'] = now.strftime("%Y-%m-%dT%H:00:00Z")
-    pointsList.append( createPoint( MYDICT ) )
-else:
-    sqlWriteInfluxDb()
+# Function to add the data to sqlite3
+def dataWriteSqlite(server, files, size, startTime, endTime, uploaded):
+  if os.path.isfile( SQLITE_DB ):                       # Checking for the SQLITE DB
+   conn = sqlite3.connect( SQLITE_DB )
+   cursor = conn.cursor()
+   cursor.execute('select starttime from {mname} where server="{sname}" order by starttime desc limit 1'.format(mname='drive_info',sname=server))
+   all_rows = cursor.fetchall()     # Fetching the starttime for the server already present in sqlite3
+   if all_rows:
+       for rows in all_rows:
+         if startTime == rows[0]:   # Checking if Records already present with the same timestamp and server	
+	    print "Records Already exists"
+	 else:
+	    cursor.execute('''INSERT INTO drive_info(server,files,bytes,starttime,endtime,uploaded)
+                  VALUES(?,?,?,?,?,?)''', (server, files, size, startTime, endTime,uploaded)) 
+	    conn.commit()
+            conn.close() 
+   else:			    # A new records will be added if there is no servername and server starttime
+     cursor.execute('''INSERT INTO drive_info(server,files,bytes,starttime,endtime,uploaded)
+            VALUES(?,?,?,?,?,?)''', (server, files, size, startTime, endTime,uploaded)) 
+     conn.commit()
+     conn.close() 
+  else:
+   print "Error: Database %s not exists" % SQLITE_DB
+   sys.exit( 1 )
 
-#print pointsList
- CALLING INFLUXDB API TO PUSH THE DATAPOINTS
+#CALLING INFLUXDB API TO PUSH THE DATAPOINTS
 client.write_points( pointsList )
 
 
