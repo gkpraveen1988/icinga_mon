@@ -47,6 +47,7 @@ def addBackupPoint(server, files, size, startTime, endTime):
   pointsList.append(createPoint(MYDICT))
   client.write_points( pointsList )
 
+'''
 # Function for passing the correct option and get the option values
 def getArgs():
     parser = argparse.ArgumentParser(
@@ -62,6 +63,7 @@ def getArgs():
  
     args = parser.parse_args()
     return args
+'''
 
 # Function to push the data to Influx for UPLOADED record in SQLITE3 is 0
 def sqlWriteInfluxDb():
