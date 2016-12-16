@@ -1,12 +1,10 @@
 #!/usr/bin/python
-import os,sys, argparse, datetime, sqlite3                   # Importing the required modules
-from influxdb import InfluxDBClient     # Importing the influxdb client module
-DB_NAME = 'ServerStats'                   # Database name
-#DB_SERVER = 'serverstats'                 # Server Name
-#SQLITE_DB = '/asg_backup/backup.db'       # SQLITE3 DB
-DB_MEASUREMENT = 'asg_backup'		   # MEASUREMENT
-DB_SERVER = 'localhost'                 # Server Name
-SQLITE_DB = 'arista.db'                 # SQLITE3 DB
+import os,sys, argparse, datetime, sqlite3                  # Importing the required modules
+from influxdb import InfluxDBClient                         # Importing the influxdb client module
+DB_NAME = 'ServerStats'                                     # Influxdb name
+DB_SERVER = 'serverstats'                      		    # Server Name
+SQLITE_DB = '/asg_backup/backup.db'            		    # SQLITE3 DB
+DB_MEASUREMENT = 'asg_backup'		                    # MEASUREMENT
 client = InfluxDBClient( DB_SERVER, 8086, '', '', DB_NAME ) # Influx DB connection
 MYDICT =  {}
 now = datetime.datetime.now()
