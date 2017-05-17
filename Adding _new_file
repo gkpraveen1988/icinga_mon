@@ -4,3 +4,5 @@ echo "Testing the integration to testing the trigger"
 echo "Second commit"
 echo "Third commit"
 echo "Adding a new commit"
+
+echo "The name of the file is $(basename $0))"
